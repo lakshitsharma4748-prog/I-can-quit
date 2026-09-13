@@ -34,7 +34,20 @@ Copy `.env.example` to `.env` for local overrides (none are required to
 run — every variable has a sane default; see `.env.example` for what each
 one is for and which aren't wired to anything yet).
 
-## Deploying to Railway
+## Deployment
+
+**Live at `https://backend-production-eacd8.up.railway.app`** — Railway
+project `safeshield-backend`, service `backend`, deployed from this repo's
+`claude/new-session-371rys` branch. `app/build.gradle.kts`'s
+`BLOCKLIST_API_BASE_URL` already points at it.
+
+```bash
+curl https://backend-production-eacd8.up.railway.app/health
+curl https://backend-production-eacd8.up.railway.app/api/blocklist
+curl https://backend-production-eacd8.up.railway.app/api/version
+```
+
+To redeploy elsewhere, or set up your own instance from scratch:
 
 1. In the Railway dashboard, create a new project (or a new service in an
    existing project) from this GitHub repo.

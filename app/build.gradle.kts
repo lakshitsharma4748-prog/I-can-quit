@@ -34,11 +34,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Placeholder — no Railway deployment exists yet for this project.
-        // Replace with the backend's real deployed URL (see backend/README.md)
-        // once one does; must stay HTTPS (BlocklistUpdater refuses to fetch
-        // over plain HTTP).
-        buildConfigField("String", "BLOCKLIST_API_BASE_URL", "\"https://safeshield-backend.example.invalid\"")
+        // Deployed to Railway (project "safeshield-backend", service
+        // "backend") from this same repo/branch — see backend/README.md.
+        // Must stay HTTPS (BlocklistUpdater refuses to fetch over plain HTTP).
+        buildConfigField("String", "BLOCKLIST_API_BASE_URL", "\"https://backend-production-eacd8.up.railway.app\"")
     }
 
     signingConfigs {

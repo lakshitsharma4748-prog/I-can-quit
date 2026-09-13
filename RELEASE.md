@@ -51,11 +51,11 @@ was built in and should be checked on a real build before publishing:
   has only ever been built and reviewed by hand (see TESTING.md) —
   `./gradlew build` itself has never completed in the environment it was
   written in.
-- **Update `BLOCKLIST_API_BASE_URL`** in `app/build.gradle.kts` to your
-  real deployed Railway backend URL (see `backend/README.md`) — it's
-  currently a placeholder (`https://safeshield-backend.example.invalid`)
-  that will make every blocklist sync fail harmlessly (network error,
-  `Result.retry()`) until this is set.
+- **`BLOCKLIST_API_BASE_URL`** in `app/build.gradle.kts` already points at
+  the live Railway deployment
+  (`https://backend-production-eacd8.up.railway.app` — project
+  "safeshield-backend", see `backend/README.md`). If you redeploy to a
+  different URL/project, update it here.
 - **Consider enabling `isMinifyEnabled = true`** for a smaller release
   APK — left off for now specifically because it hasn't been verified
   against a real build here. If you turn it on, rebuild and re-test

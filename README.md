@@ -40,7 +40,7 @@ requirements document.
 | 7 | Strong Protection policies | ✅ Done |
 | 8 | Anti-tampering | ✅ Done |
 | 9 | Bypass/network-change testing (IPv6, network resilience) | ✅ Done — see [BYPASS_TESTING.md](BYPASS_TESTING.md) |
-| 10–11 | Railway backend + configuration | ✅ Done — see [backend/README.md](backend/README.md) |
+| 10–11 | Railway backend + configuration | ✅ Done and **deployed live** — see [backend/README.md](backend/README.md) |
 | 12 | Blocklist updates (WorkManager) | ✅ Done |
 | 13 | Privacy documentation | ✅ Done — see [PRIVACY.md](PRIVACY.md) |
 | 14 | Full Material 3 UI polish | ✅ Done |
