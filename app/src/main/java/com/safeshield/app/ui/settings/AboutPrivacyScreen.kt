@@ -76,7 +76,12 @@ fun AboutPrivacyScreen(onBack: () -> Unit) {
                         "device and Android version support it, but this remains " +
                         "subject to Android, manufacturer, and OS-version " +
                         "limitations. SafeShield does not claim to be " +
-                        "100% unbypassable.",
+                        "100% unbypassable. Even as Device Owner, a factory reset " +
+                        "or a recovery-mode wipe still removes SafeShield — no app " +
+                        "can prevent that, nor should it try to. Someone with root " +
+                        "access to the device could also directly edit SafeShield's " +
+                        "own storage; that is a property of root access itself, not " +
+                        "something any app-level protection can close.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

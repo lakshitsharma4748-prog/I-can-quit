@@ -8,26 +8,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Exposes the current [ManagementState] to the UI. Unlike VPN state (which
- * the running service updates reactively), Device Owner/Admin status can
- * only be *asked for* via `DevicePolicyManager` — there's no push
- * notification for "you're Device Owner now" — so [refresh] must be called
- * at points where the state could plausibly have changed (Home appearing,
- * returning from the provisioning system UI).
+ * Exposes [DeviceManagementState] (process-wide) to the UI, and is the
+ * on-demand half of keeping it current — the other half is
+ * [DeviceOwnerChangeReceiver], which reacts to Android's own
+ * `ACTION_DEVICE_OWNER_CHANGED` broadcast for changes that happen while
+ * nothing in the UI is actively asking.
  */
 class DeviceManagementViewModel(application: Application) : AndroidViewModel(application) {
 
     private val controller = DeviceManagementController(application)
 
-    private val _state = MutableStateFlow(controller.currentState())
-    val state: StateFlow<ManagementState> = _state.asStateFlow()
+    val state: StateFlow<ManagementState> = DeviceManagementState.state
 
     private val _policyOutcomes = MutableStateFlow<List<DeviceManagementController.PolicyOutcome>>(emptyList())
     /** Empty unless [state] is [ManagementState.DEVICE_OWNER] — see [DeviceManagementController.applyStrongProtectionPolicies]. */
     val policyOutcomes: StateFlow<List<DeviceManagementController.PolicyOutcome>> = _policyOutcomes.asStateFlow()
 
     init {
-        applyPoliciesIfOwner()
+        refresh()
     }
 
     /**
@@ -40,12 +38,8 @@ class DeviceManagementViewModel(application: Application) : AndroidViewModel(app
      * one-time trigger.
      */
     fun refresh() {
-        _state.value = controller.currentState()
-        applyPoliciesIfOwner()
-    }
-
-    private fun applyPoliciesIfOwner() {
-        _policyOutcomes.value = if (_state.value == ManagementState.DEVICE_OWNER) {
+        DeviceManagementState.update(controller.currentState())
+        _policyOutcomes.value = if (state.value == ManagementState.DEVICE_OWNER) {
             controller.applyStrongProtectionPolicies()
         } else {
             emptyList()
