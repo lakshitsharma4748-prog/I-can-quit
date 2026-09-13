@@ -42,7 +42,7 @@ requirements document.
 | 9 | Bypass/network-change testing (IPv6, network resilience) | ✅ Done — see [BYPASS_TESTING.md](BYPASS_TESTING.md) |
 | 10–11 | Railway backend + configuration | ✅ Done — see [backend/README.md](backend/README.md) |
 | 12 | Blocklist updates (WorkManager) | ✅ Done |
-| 13 | Privacy documentation | ⏳ Next |
+| 13 | Privacy documentation | ✅ Done — see [PRIVACY.md](PRIVACY.md) |
 | 14 | Full Material 3 UI polish | Planned |
 | 15 | Blocked-website experience | Planned |
 | 16 | Testing | Planned |
@@ -117,9 +117,10 @@ it; the backend only feeds the Phase 12 blocklist-sync job.
 By default, SafeShield does not store browsing history, upload visited
 URLs, collect search history, read private messages, record screen
 contents, or otherwise monitor the user. Only the minimum information
-needed for blocklist/version management is sent to the backend. Full
-privacy behavior is documented in-app (Settings → Privacy) starting at
-Phase 13.
+needed for blocklist/version management is sent to the backend. See
+[PRIVACY.md](PRIVACY.md) for the full policy (also linked from the app's
+Settings → About & Privacy screen), matched point-by-point against what
+the code actually does.
 
 ## License
 

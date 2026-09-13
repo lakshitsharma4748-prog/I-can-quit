@@ -22,6 +22,7 @@ private val PRIVACY_POINTS = listOf(
     "SafeShield does not collect your search history.",
     "SafeShield does not read private messages.",
     "SafeShield does not record your screen.",
+    "SafeShield does not use Android's Accessibility service to watch what you do in other apps.",
     "SafeShield does not monitor you secretly, ever."
 )
 
@@ -64,6 +65,13 @@ fun AboutPrivacyScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+                Text(
+                    text = "The full privacy policy (PRIVACY.md in this project's " +
+                        "source repository) covers exactly what's stored, where, and " +
+                        "why, point by point against the code.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -81,7 +89,10 @@ fun AboutPrivacyScreen(onBack: () -> Unit) {
                         "can prevent that, nor should it try to. Someone with root " +
                         "access to the device could also directly edit SafeShield's " +
                         "own storage; that is a property of root access itself, not " +
-                        "something any app-level protection can close.",
+                        "something any app-level protection can close. Private DNS " +
+                        "and DNS-over-HTTPS, if enabled on this device, currently " +
+                        "bypass this app's filtering too — see BYPASS_TESTING.md in " +
+                        "the source repository for detail.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
