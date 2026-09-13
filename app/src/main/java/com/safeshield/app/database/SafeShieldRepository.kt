@@ -1,6 +1,7 @@
 package com.safeshield.app.database
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
@@ -22,19 +23,36 @@ class SafeShieldRepository(
     private val clock: () -> Long = System::currentTimeMillis
 ) {
 
-    /** All enabled domain names, categories collapsed — this is what should ever reach [com.safeshield.app.vpn.DomainFilter.updateBlockedDomains]. */
+    /** Always emits a value — a default, protection-off row if nothing has been saved yet. */
+    val settings: Flow<SettingsEntity> =
+        settingsDao.observe().map { it ?: SettingsEntity() }
+
+    /**
+     * All enabled domain names that should actually be blocked right now —
+     * this is what should ever reach
+     * [com.safeshield.app.vpn.DomainFilter.updateBlockedDomains]. Honors
+     * `settings.blockAdultContent`: when the user has turned adult-content
+     * filtering off, domains in [DomainEntity.CATEGORY_ADULT] are excluded
+     * even though they stay enabled in the table (so re-enabling the
+     * setting doesn't require re-syncing the blocklist).
+     *
+     * Declared after [settings] deliberately — this initializer captures
+     * that property, so it must already be initialized (Kotlin runs
+     * property initializers top-to-bottom in declaration order).
+     */
     val activeBlockedDomains: Flow<Set<String>> =
-        domainDao.observeEnabled().map { entities -> entities.map { it.domain }.toSet() }
+        combine(domainDao.observeEnabled(), settings) { entities, currentSettings ->
+            entities
+                .filter { currentSettings.blockAdultContent || it.category != DomainEntity.CATEGORY_ADULT }
+                .map { it.domain }
+                .toSet()
+        }
 
     val allowedDomains: Flow<Set<String>> =
         allowlistDao.observeAll().map { entities -> entities.map { it.domain }.toSet() }
 
     val allDomains: Flow<List<DomainEntity>> = domainDao.observeAll()
     val allowlistEntries: Flow<List<AllowlistEntity>> = allowlistDao.observeAll()
-
-    /** Always emits a value — a default, protection-off row if nothing has been saved yet. */
-    val settings: Flow<SettingsEntity> =
-        settingsDao.observe().map { it ?: SettingsEntity() }
 
     suspend fun currentSettings(): SettingsEntity = settingsDao.get() ?: SettingsEntity()
 

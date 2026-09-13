@@ -12,6 +12,8 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.safeshield.app.MainActivity
 import com.safeshield.app.R
+import com.safeshield.app.database.AppDatabase
+import com.safeshield.app.database.SafeShieldRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,10 +51,16 @@ class SafeShieldVpnService : VpnService() {
     private var tunInterface: ParcelFileDescriptor? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var packetLoopJob: Job? = null
+    private var domainSyncJob: Job? = null
+
+    private lateinit var repository: SafeShieldRepository
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        val database = AppDatabase.getInstance(this)
+        repository = SafeShieldRepository(database.domainDao(), database.allowlistDao(), database.settingsDao())
+        serviceScope.launch { repository.ensureDefaultTestBlocklist() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -108,9 +116,16 @@ class SafeShieldVpnService : VpnService() {
         startForeground(NOTIFICATION_ID, buildNotification())
         VpnConnectionState.update(VpnState.CONNECTED)
         packetLoopJob = serviceScope.launch { runPacketLoop(establishedInterface) }
+        domainSyncJob = serviceScope.launch {
+            launch { repository.activeBlockedDomains.collect { domainFilter.updateBlockedDomains(it) } }
+            launch { repository.allowedDomains.collect { domainFilter.updateAllowedDomains(it) } }
+        }
     }
 
     private fun stopVpn() {
+        domainSyncJob?.cancel()
+        domainSyncJob = null
+
         val job = packetLoopJob
         packetLoopJob = null
         if (job != null) {
