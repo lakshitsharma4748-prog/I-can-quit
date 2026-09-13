@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SafeShield does not use any legacy Device Admin policy (password
+     rules, remote wipe, camera disable, etc.) — this admin exists solely
+     so the app can be Device Owner-provisioned via the official Android
+     APIs. Device Owner's own, broader API surface (setUninstallBlocked,
+     addUserRestriction, etc. — see device/DeviceManagementController) is
+     gated by DevicePolicyManager.isDeviceOwnerApp(), not by anything
+     declared here. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies />
+</device-admin>

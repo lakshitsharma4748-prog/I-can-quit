@@ -16,21 +16,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.safeshield.app.device.ManagementState
+import com.safeshield.app.device.displayLabel
 import com.safeshield.app.ui.components.StatusCard
 import com.safeshield.app.ui.components.StatusRow
 import com.safeshield.app.ui.theme.SafeShieldTheme
 import com.safeshield.app.vpn.VpnState
 
 /**
- * Home screen. As of Phase 5, Protection/VPN rows reflect real state
- * ([protectionEnabled] from Room settings, [vpnState] from the running
- * VpnService). Device Management (Phase 6) and Blocklist (Phase 12/14)
- * remain static placeholders until those phases wire them up.
+ * Home screen. Protection/VPN rows reflect real state ([protectionEnabled]
+ * from Room settings, [vpnState] from the running VpnService) as of Phase
+ * 5; Device Management reflects real state ([managementState]) as of Phase
+ * 6. Blocklist remains a static placeholder until Phase 12/14 wire it up.
  */
 @Composable
 fun HomeScreen(
     protectionEnabled: Boolean,
     vpnState: VpnState,
+    managementState: ManagementState,
     onEnableProtection: () -> Unit,
     onDisableProtectionRequested: () -> Unit,
     onEnableStrongProtection: () -> Unit,
@@ -68,9 +71,13 @@ fun HomeScreen(
                 )
                 StatusRow(
                     label = "Device Management",
-                    value = "NOT CONFIGURED",
-                    indicatorColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    filled = false
+                    value = managementState.displayLabel(),
+                    indicatorColor = if (managementState == ManagementState.NOT_MANAGED) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    filled = managementState != ManagementState.NOT_MANAGED
                 )
                 StatusRow(
                     label = "Blocklist",
@@ -134,6 +141,7 @@ private fun HomeScreenPreview() {
         HomeScreen(
             protectionEnabled = false,
             vpnState = VpnState.DISCONNECTED,
+            managementState = ManagementState.NOT_MANAGED,
             onEnableProtection = {},
             onDisableProtectionRequested = {},
             onEnableStrongProtection = {},

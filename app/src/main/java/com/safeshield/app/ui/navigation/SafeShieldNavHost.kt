@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.safeshield.app.device.DeviceManagementViewModel
 import com.safeshield.app.ui.admin.AdminSecurityScreen
 import com.safeshield.app.ui.components.PinConfirmDialog
 import com.safeshield.app.ui.home.HomeScreen
@@ -25,6 +27,7 @@ import com.safeshield.app.ui.protection.ProtectionModeScreen
 import com.safeshield.app.ui.protection.ProtectionViewModel
 import com.safeshield.app.ui.protection.StrongProtectionConsentScreen
 import com.safeshield.app.ui.settings.AboutPrivacyScreen
+import com.safeshield.app.ui.settings.DeviceManagementScreen
 import com.safeshield.app.ui.settings.SettingsScreen
 import com.safeshield.app.vpn.SafeShieldVpnService
 import kotlinx.coroutines.launch
@@ -41,6 +44,21 @@ import kotlinx.coroutines.launch
 fun SafeShieldNavHost(navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
     val protectionViewModel: ProtectionViewModel = viewModel()
+    val deviceManagementViewModel: DeviceManagementViewModel = viewModel()
+
+    // Device Owner/Admin status can only be polled, not pushed — refresh
+    // whenever we come back from the system provisioning UI, regardless of
+    // its result code (OEM behavior here is inconsistent; isDeviceOwnerApp()
+    // afterward is the only check that's actually trustworthy).
+    val provisioningLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { deviceManagementViewModel.refresh() }
+
+    // A pending action to run only once VPN consent is actually granted —
+    // used to sequence Strong Protection's device-owner provisioning intent
+    // after Standard Protection's VPN consent, rather than firing both
+    // system dialogs at once.
+    var pendingAfterVpnConsent by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     // VPN consent (VpnService.prepare()) needs an ActivityResultLauncher,
     // which only exists at this Compose/Activity layer — ProtectionViewModel
@@ -50,17 +68,21 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             protectionViewModel.activateProtection()
+            pendingAfterVpnConsent?.invoke()
         }
         // A denied/cancelled consent prompt leaves protection off — Home
         // keeps showing INACTIVE, which is already the truthful state.
+        pendingAfterVpnConsent = null
     }
 
-    fun requestProtectionActivation() {
+    fun requestProtectionActivation(afterActivation: (() -> Unit)? = null) {
         val consentIntent = SafeShieldVpnService.prepareIntent(context)
         if (consentIntent != null) {
+            pendingAfterVpnConsent = afterActivation
             vpnPermissionLauncher.launch(consentIntent)
         } else {
             protectionViewModel.activateProtection()
+            afterActivation?.invoke()
         }
     }
 
@@ -89,10 +111,15 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
             StrongProtectionConsentScreen(
                 onCancel = { navController.popBackStack() },
                 onConfirm = {
-                    // Phase 6 adds real Device Owner provisioning on top of
-                    // this; for now, confirming Strong Protection activates
-                    // the same VPN filtering Standard Protection does.
-                    requestProtectionActivation()
+                    // Sequenced: VPN consent first (same as Standard
+                    // Protection), then — only if that's granted — the
+                    // official Device Owner provisioning intent. Whether
+                    // provisioning actually succeeds is entirely up to
+                    // Android and the device's state; see
+                    // DeviceManagementController's class doc.
+                    requestProtectionActivation(afterActivation = {
+                        provisioningLauncher.launch(deviceManagementViewModel.deviceOwnerProvisioningIntent())
+                    })
                     navController.navigateToHomeClearingBackStack()
                 }
             )
@@ -100,13 +127,21 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
         composable(Routes.HOME) {
             val settings by protectionViewModel.settings.collectAsState()
             val vpnState by protectionViewModel.vpnState.collectAsState()
+            val managementState by deviceManagementViewModel.state.collectAsState()
             val coroutineScope = rememberCoroutineScope()
             var showDisableConfirm by remember { mutableStateOf(false) }
             var pinErrorMessage by remember { mutableStateOf<String?>(null) }
 
+            // Device Owner/Admin state has no push notification for "it
+            // changed" (that's Phase 8's job); re-check whenever Home
+            // becomes visible so at least returning here always shows the
+            // truth.
+            LaunchedEffect(Unit) { deviceManagementViewModel.refresh() }
+
             HomeScreen(
                 protectionEnabled = settings.protectionEnabled,
                 vpnState = vpnState,
+                managementState = managementState,
                 onEnableProtection = { navController.navigate(Routes.PROTECTION_MODE_SELECT) },
                 onDisableProtectionRequested = {
                     if (protectionViewModel.isPinRequiredToDisable()) {
@@ -143,11 +178,19 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
                 onBack = { navController.popBackStack() },
                 onOpenProtectionMode = { navController.navigate(Routes.PROTECTION_MODE_SELECT) },
                 onOpenSecurity = { navController.navigate(Routes.SETTINGS_SECURITY) },
+                onOpenDeviceManagement = { navController.navigate(Routes.SETTINGS_DEVICE_MANAGEMENT) },
                 onOpenAboutPrivacy = { navController.navigate(Routes.SETTINGS_ABOUT_PRIVACY) }
             )
         }
         composable(Routes.SETTINGS_SECURITY) {
             AdminSecurityScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_DEVICE_MANAGEMENT) {
+            DeviceManagementScreen(
+                onBack = { navController.popBackStack() },
+                onStartStrongProtectionSetup = { navController.navigate(Routes.STRONG_PROTECTION_CONSENT) },
+                viewModel = deviceManagementViewModel
+            )
         }
         composable(Routes.SETTINGS_ABOUT_PRIVACY) {
             AboutPrivacyScreen(onBack = { navController.popBackStack() })

@@ -20,15 +20,15 @@ import com.safeshield.app.ui.theme.SafeShieldTheme
 private data class SettingsEntry(val title: String, val subtitle: String, val onClick: () -> Unit)
 
 /**
- * Settings hub. Only the sections that exist as of Phase 1 are listed here
- * (Protection mode, Security, About & Privacy). Blocklist and Allowlist
- * sections are added once Phase 3 (Room) and Phase 12 (sync) exist.
+ * Settings hub. Blocklist and Allowlist sections are added once Phase 12
+ * (sync) gives them something worth a dedicated screen.
  */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenProtectionMode: () -> Unit,
     onOpenSecurity: () -> Unit,
+    onOpenDeviceManagement: () -> Unit,
     onOpenAboutPrivacy: () -> Unit
 ) {
     val entries = listOf(
@@ -41,6 +41,11 @@ fun SettingsScreen(
             title = "Security",
             subtitle = "Administrator PIN",
             onClick = onOpenSecurity
+        ),
+        SettingsEntry(
+            title = "Device Management",
+            subtitle = "Management status, provisioning, supported policies",
+            onClick = onOpenDeviceManagement
         ),
         SettingsEntry(
             title = "About & Privacy",
@@ -85,6 +90,12 @@ fun SettingsScreen(
 @Composable
 private fun SettingsScreenPreview() {
     SafeShieldTheme {
-        SettingsScreen(onBack = {}, onOpenProtectionMode = {}, onOpenSecurity = {}, onOpenAboutPrivacy = {})
+        SettingsScreen(
+            onBack = {},
+            onOpenProtectionMode = {},
+            onOpenSecurity = {},
+            onOpenDeviceManagement = {},
+            onOpenAboutPrivacy = {}
+        )
     }
 }
