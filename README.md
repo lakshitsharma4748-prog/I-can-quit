@@ -40,8 +40,8 @@ requirements document.
 | 7 | Strong Protection policies | ✅ Done |
 | 8 | Anti-tampering | ✅ Done |
 | 9 | Bypass/network-change testing (IPv6, network resilience) | ✅ Done — see [BYPASS_TESTING.md](BYPASS_TESTING.md) |
-| 10–11 | Railway backend + configuration | ⏳ Next |
-| 12 | Blocklist updates (WorkManager) | Planned |
+| 10–11 | Railway backend + configuration | ✅ Done — see [backend/README.md](backend/README.md) |
+| 12 | Blocklist updates (WorkManager) | ⏳ Next |
 | 13 | Privacy documentation | Planned |
 | 14 | Full Material 3 UI polish | Planned |
 | 15 | Blocked-website experience | Planned |
@@ -75,9 +75,11 @@ app/src/main/java/com/safeshield/app/
 └── common/           — shared utilities
 ```
 
-A `backend/` directory (Node.js/TypeScript, deployed to Railway) is added
-starting at Phase 10 to serve blocklist/version data over HTTPS. The VPN
-MVP works entirely offline without it.
+A `backend/` directory (Node.js/TypeScript/Express, deployed to Railway)
+serves blocklist/version data over HTTPS — see
+[backend/README.md](backend/README.md) for its endpoints, local dev, and
+Railway deployment steps. The VPN itself works entirely offline without
+it; the backend only feeds the Phase 12 blocklist-sync job.
 
 ## Requirements
 
