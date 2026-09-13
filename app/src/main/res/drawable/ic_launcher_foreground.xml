@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple shield glyph representing SafeShield -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 L78,30 V54 C78,71 68,83 54,90 C40,83 30,71 30,54 V30 Z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M54,30 L70,37 V54 C70,66 63,75 54,80 C45,75 38,66 38,54 V37 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,54 L52,60 L64,44"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

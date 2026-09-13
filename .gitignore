@@ -1,0 +1,50 @@
+# Byte-compiled / build output
+*.class
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Local configuration files that hold machine-specific paths
+local.properties
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio / Kotlin
+.kotlin/
+*.hprof
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Signing / secrets — never commit these
+*.jks
+*.keystore
+keystore.properties
+*.pem
+*.p12
+.env
+.env.*
+!.env.example
+
+# Backend (Node.js) — added in Phase 10
+backend/node_modules/
+backend/dist/
+backend/*.log
