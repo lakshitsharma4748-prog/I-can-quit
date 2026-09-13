@@ -41,8 +41,8 @@ requirements document.
 | 8 | Anti-tampering | ✅ Done |
 | 9 | Bypass/network-change testing (IPv6, network resilience) | ✅ Done — see [BYPASS_TESTING.md](BYPASS_TESTING.md) |
 | 10–11 | Railway backend + configuration | ✅ Done — see [backend/README.md](backend/README.md) |
-| 12 | Blocklist updates (WorkManager) | ⏳ Next |
-| 13 | Privacy documentation | Planned |
+| 12 | Blocklist updates (WorkManager) | ✅ Done |
+| 13 | Privacy documentation | ⏳ Next |
 | 14 | Full Material 3 UI polish | Planned |
 | 15 | Blocked-website experience | Planned |
 | 16 | Testing | Planned |

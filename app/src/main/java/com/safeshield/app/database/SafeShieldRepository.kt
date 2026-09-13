@@ -102,4 +102,26 @@ class SafeShieldRepository(
             )
         }
     }
+
+    /**
+     * Applies a validated blocklist sync (PRD Phase 12) atomically: every
+     * domain the server sent replaces everything currently stored except
+     * the local [DomainEntity.CATEGORY_TEST] seed, which this never
+     * touches — a sync failure or a server outage simply means this is
+     * never called, leaving whatever was last successfully applied in
+     * place ("keep previous valid list if update fails" / "offline
+     * operation with the latest valid blocklist").
+     *
+     * [entries] must already be validated by the caller
+     * (`updater/BlocklistValidator`) — this trusts its input completely.
+     */
+    suspend fun applyBlocklistSync(entries: List<Pair<String, String>>, syncedAt: Long = clock()) {
+        domainDao.replaceAllExceptCategory(
+            DomainEntity.CATEGORY_TEST,
+            entries.map { (domain, category) ->
+                DomainEntity(domain = domain.trim().lowercase(), category = category, updatedAt = syncedAt)
+            }
+        )
+        recordBlocklistUpdate(syncedAt)
+    }
 }

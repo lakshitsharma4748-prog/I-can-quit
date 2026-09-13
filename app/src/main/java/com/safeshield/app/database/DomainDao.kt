@@ -35,6 +35,9 @@ interface DomainDao {
     @Query("DELETE FROM domains WHERE category = :category")
     suspend fun deleteByCategory(category: String)
 
+    @Query("DELETE FROM domains WHERE category != :keptCategory")
+    suspend fun deleteAllExceptCategory(keptCategory: String)
+
     /**
      * Replaces every entry in [category] with [domains] in one transaction,
      * so a blocklist sync (Phase 12) never leaves the table half-updated if
@@ -44,6 +47,18 @@ interface DomainDao {
     @Transaction
     suspend fun replaceCategory(category: String, domains: List<DomainEntity>) {
         deleteByCategory(category)
+        upsertAll(domains)
+    }
+
+    /**
+     * Atomically replaces every server-synced domain (i.e. everything
+     * except [keptCategory]) with [domains] — used by a Phase 12 blocklist
+     * sync, which must never touch the local test blocklist it doesn't own.
+     * Same all-or-nothing guarantee as [replaceCategory].
+     */
+    @Transaction
+    suspend fun replaceAllExceptCategory(keptCategory: String, domains: List<DomainEntity>) {
+        deleteAllExceptCategory(keptCategory)
         upsertAll(domains)
     }
 }

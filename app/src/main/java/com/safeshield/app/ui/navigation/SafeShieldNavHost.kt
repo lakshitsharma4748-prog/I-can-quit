@@ -27,6 +27,7 @@ import com.safeshield.app.ui.protection.ProtectionModeScreen
 import com.safeshield.app.ui.protection.ProtectionViewModel
 import com.safeshield.app.ui.protection.StrongProtectionConsentScreen
 import com.safeshield.app.ui.settings.AboutPrivacyScreen
+import com.safeshield.app.ui.settings.BlocklistScreen
 import com.safeshield.app.ui.settings.DeviceManagementScreen
 import com.safeshield.app.ui.settings.SettingsScreen
 import com.safeshield.app.vpn.SafeShieldVpnService
@@ -179,6 +180,7 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
                 onOpenProtectionMode = { navController.navigate(Routes.PROTECTION_MODE_SELECT) },
                 onOpenSecurity = { navController.navigate(Routes.SETTINGS_SECURITY) },
                 onOpenDeviceManagement = { navController.navigate(Routes.SETTINGS_DEVICE_MANAGEMENT) },
+                onOpenBlocklist = { navController.navigate(Routes.SETTINGS_BLOCKLIST) },
                 onOpenAboutPrivacy = { navController.navigate(Routes.SETTINGS_ABOUT_PRIVACY) }
             )
         }
@@ -191,6 +193,9 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
                 onStartStrongProtectionSetup = { navController.navigate(Routes.STRONG_PROTECTION_CONSENT) },
                 viewModel = deviceManagementViewModel
             )
+        }
+        composable(Routes.SETTINGS_BLOCKLIST) {
+            BlocklistScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_ABOUT_PRIVACY) {
             AboutPrivacyScreen(onBack = { navController.popBackStack() })
