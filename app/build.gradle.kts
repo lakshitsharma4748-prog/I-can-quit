@@ -1,9 +1,24 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Release signing (PRD Phase 18: "prepare the project for APK/release
+// building"). Reads from keystore.properties at the repo root, which is
+// gitignored and never committed — see keystore.properties.example and
+// RELEASE.md. Building `release` without that file present still works
+// (unsigned), it just can't be installed until signed.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -26,13 +41,32 @@ android {
         buildConfigField("String", "BLOCKLIST_API_BASE_URL", "\"https://safeshield-backend.example.invalid\"")
     }
 
+    signingConfigs {
+        if (hasKeystoreProperties) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Left off for now: R8 hasn't been verified against a real build
+            // in this environment (see README's network-access note), and
+            // shipping an unverified minified build is a worse risk than a
+            // slightly larger APK. Turning this on is a recommended, but
+            // separately-verified, pre-launch step — see RELEASE.md.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasKeystoreProperties) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

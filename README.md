@@ -47,17 +47,22 @@ requirements document.
 | 15 | Blocked-website experience | ✅ Done |
 | 16 | Testing | ✅ Done — see [TESTING.md](TESTING.md) |
 | 17 | Build verification | ✅ Done — see below |
-| 18–19 | Release prep, final acceptance | ⏳ Next |
+| 18 | Release preparation | ✅ Done — see [RELEASE.md](RELEASE.md) |
+| 19 | Final acceptance | ⏳ Next |
 
-See [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md) for what
-Strong Protection's Device Owner step actually requires on a real device,
-and [BYPASS_TESTING.md](BYPASS_TESTING.md) for the VPN's known filtering
-gaps (Private DNS/DoH/DoT) and a manual test checklist.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full current module
+breakdown, [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md)
+for what Strong Protection's Device Owner step actually requires on a real
+device, [BYPASS_TESTING.md](BYPASS_TESTING.md) for the VPN's known
+filtering gaps (Private DNS/DoH/DoT) and a manual test checklist, and
+[RELEASE.md](RELEASE.md) for building a signed release APK/AAB.
 
 ## Architecture
 
-The Android app (module `app/`) is organized by responsibility so that UI,
-filtering, storage, security, and device-management code stay decoupled:
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete, current
+breakdown. Summary: the Android app (module `app/`) is organized by
+responsibility so that UI, filtering, storage, security, and
+device-management code stay decoupled:
 
 ```
 app/src/main/java/com/safeshield/app/
