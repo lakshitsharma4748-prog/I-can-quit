@@ -15,3 +15,10 @@ data class BlocklistEntryDto(
     val domain: String,
     val category: String
 )
+
+/** Mirrors the backend's `GET /api/version` response shape — see backend/src/controllers/version.controller.ts. */
+@Serializable
+data class VersionResponse(
+    val backend: String,
+    val blocklistVersion: String
+)

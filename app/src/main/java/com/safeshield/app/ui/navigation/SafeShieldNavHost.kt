@@ -1,6 +1,9 @@
 package com.safeshield.app.ui.navigation
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -12,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -79,7 +83,25 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
         pendingAfterVpnConsent = null
     }
 
+    // POST_NOTIFICATIONS is a runtime (not just manifest) permission on API
+    // 33+; without requesting it, the foreground-service status notification
+    // and the Phase 15 blocked-website notification would silently never
+    // appear. Best-effort: protection still fully works without it granted,
+    // just without a visible ongoing notification.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* no-op either way */ }
+
+    fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     fun requestProtectionActivation(afterActivation: (() -> Unit)? = null) {
+        ensureNotificationPermission()
         val consentIntent = SafeShieldVpnService.prepareIntent(context)
         if (consentIntent != null) {
             pendingAfterVpnConsent = afterActivation

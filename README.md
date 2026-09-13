@@ -48,7 +48,13 @@ requirements document.
 | 16 | Testing | ✅ Done — see [TESTING.md](TESTING.md) |
 | 17 | Build verification | ✅ Done — see below |
 | 18 | Release preparation | ✅ Done — see [RELEASE.md](RELEASE.md) |
-| 19 | Final acceptance | ⏳ Next |
+| 19 | Final acceptance | ✅ Done |
+
+All 19 phases are complete. See the final acceptance review notes in the
+Phase 19 commit for what was audited and fixed in that pass (a missing
+runtime `POST_NOTIFICATIONS` request on API 33+, and the Android client
+never actually calling the backend's `/api/version` endpoint it was built
+to support).
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full current module
 breakdown, [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md)

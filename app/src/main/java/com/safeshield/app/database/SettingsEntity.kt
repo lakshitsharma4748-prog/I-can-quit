@@ -14,7 +14,9 @@ data class SettingsEntity(
     val id: Int = SINGLETON_ID,
     val protectionEnabled: Boolean = false,
     val blockAdultContent: Boolean = true,
-    val lastBlocklistUpdate: Long? = null
+    val lastBlocklistUpdate: Long? = null,
+    /** The `version` string from the last blocklist sync that was actually checked — lets BlocklistUpdater skip re-downloading an unchanged list via `GET /api/version` first. */
+    val lastAppliedBlocklistVersion: String? = null
 ) {
     companion object {
         const val SINGLETON_ID = 1

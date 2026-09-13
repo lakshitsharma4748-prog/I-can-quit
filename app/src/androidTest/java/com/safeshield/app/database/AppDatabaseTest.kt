@@ -80,8 +80,41 @@ class AppDatabaseTest {
         assertEquals(false, defaults.protectionEnabled)
         assertEquals(true, defaults.blockAdultContent)
         assertNull(defaults.lastBlocklistUpdate)
+        assertNull(defaults.lastAppliedBlocklistVersion)
 
         repository.setProtectionEnabled(true)
         assertEquals(true, repository.currentSettings().protectionEnabled)
+    }
+
+    @Test
+    fun applyBlocklistSync_replacesNonTestDomainsAndRecordsVersion() = runBlocking {
+        repository.ensureDefaultTestBlocklist() // seeds CATEGORY_TEST — must survive the sync below untouched
+        repository.replaceCategoryDomains(DomainEntity.CATEGORY_ADULT, setOf("old-synced.example"))
+
+        repository.applyBlocklistSync(
+            entries = listOf("new-synced.example" to DomainEntity.CATEGORY_ADULT),
+            version = "42",
+            syncedAt = 1_000L
+        )
+
+        val domains = repository.activeBlockedDomains.first()
+        assertTrue(domains.contains("new-synced.example"))
+        assertTrue(!domains.contains("old-synced.example")) // replaced, not merged
+        assertTrue(domains.contains("blocked-example.test")) // the local test seed is untouched
+
+        val settings = repository.currentSettings()
+        assertEquals("42", settings.lastAppliedBlocklistVersion)
+        assertEquals(1_000L, settings.lastBlocklistUpdate)
+    }
+
+    @Test
+    fun recordBlocklistVersionCheck_updatesTimestampWithoutTouchingDomains() = runBlocking {
+        repository.replaceCategoryDomains(DomainEntity.CATEGORY_ADULT, setOf("still-here.example"))
+
+        repository.recordBlocklistVersionCheck(version = "7", atEpochMillis = 2_000L)
+
+        assertEquals("7", repository.currentSettings().lastAppliedBlocklistVersion)
+        assertEquals(2_000L, repository.currentSettings().lastBlocklistUpdate)
+        assertTrue(repository.activeBlockedDomains.first().contains("still-here.example"))
     }
 }

@@ -68,6 +68,19 @@ class SafeShieldRepository(
         settingsDao.upsert(currentSettings().copy(lastBlocklistUpdate = atEpochMillis))
     }
 
+    /**
+     * Records that a sync check happened at [atEpochMillis] without
+     * necessarily changing any domains — used when `GET /api/version`
+     * shows the blocklist is already current, so [activeBlockedDomains]'s
+     * freshness (Phase 14: NOT_LOADED/UP_TO_DATE/STALE) reflects that
+     * checks are succeeding, not just that content changed.
+     */
+    suspend fun recordBlocklistVersionCheck(version: String, atEpochMillis: Long = clock()) {
+        settingsDao.upsert(
+            currentSettings().copy(lastBlocklistUpdate = atEpochMillis, lastAppliedBlocklistVersion = version)
+        )
+    }
+
     suspend fun addToAllowlist(domain: String) {
         allowlistDao.add(AllowlistEntity(domain = domain.trim().lowercase(), createdAt = clock()))
     }
@@ -115,13 +128,13 @@ class SafeShieldRepository(
      * [entries] must already be validated by the caller
      * (`updater/BlocklistValidator`) — this trusts its input completely.
      */
-    suspend fun applyBlocklistSync(entries: List<Pair<String, String>>, syncedAt: Long = clock()) {
+    suspend fun applyBlocklistSync(entries: List<Pair<String, String>>, version: String, syncedAt: Long = clock()) {
         domainDao.replaceAllExceptCategory(
             DomainEntity.CATEGORY_TEST,
             entries.map { (domain, category) ->
                 DomainEntity(domain = domain.trim().lowercase(), category = category, updatedAt = syncedAt)
             }
         )
-        recordBlocklistUpdate(syncedAt)
+        recordBlocklistVersionCheck(version, syncedAt)
     }
 }
