@@ -43,8 +43,8 @@ requirements document.
 | 10–11 | Railway backend + configuration | ✅ Done — see [backend/README.md](backend/README.md) |
 | 12 | Blocklist updates (WorkManager) | ✅ Done |
 | 13 | Privacy documentation | ✅ Done — see [PRIVACY.md](PRIVACY.md) |
-| 14 | Full Material 3 UI polish | Planned |
-| 15 | Blocked-website experience | Planned |
+| 14 | Full Material 3 UI polish | ✅ Done |
+| 15 | Blocked-website experience | ⏳ Next |
 | 16 | Testing | Planned |
 | 17–19 | Build verification, release prep, final acceptance | Planned |
 

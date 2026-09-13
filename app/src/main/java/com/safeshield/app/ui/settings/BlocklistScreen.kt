@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -37,6 +39,7 @@ fun BlocklistScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val domainCount by viewModel.domainCount.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
 
     Scaffold(
         topBar = { SafeShieldTopBar(title = "Blocklist", onBack = onBack) }
@@ -59,9 +62,22 @@ fun BlocklistScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Button(onClick = viewModel::syncNow, modifier = Modifier.fillMaxWidth()) {
-                Text("Update now")
+            Button(
+                onClick = viewModel::syncNow,
+                enabled = syncState != SyncUiState.SYNCING,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (syncState == SyncUiState.SYNCING) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Update now")
+                }
             }
+            SyncFeedback(syncState)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -87,6 +103,22 @@ fun BlocklistScreen(
             )
         }
     }
+}
+
+@Composable
+private fun SyncFeedback(state: SyncUiState) {
+    val text = when (state) {
+        SyncUiState.IDLE -> return
+        SyncUiState.SYNCING -> "Syncing…"
+        SyncUiState.SUCCEEDED -> "Blocklist updated."
+        SyncUiState.FAILED -> "Sync failed — the previous blocklist is still in effect."
+    }
+    val color = if (state == SyncUiState.FAILED) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
 }
 
 private fun formatTimestamp(epochMillis: Long): String =

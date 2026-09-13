@@ -8,8 +8,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
+import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.TimeUnit
 
 /**
@@ -53,4 +55,8 @@ object BlocklistSyncScheduler {
             request
         )
     }
+
+    /** Lets the UI show loading/success/failure feedback for a manually-triggered sync (PRD Phase 14: "loading/error states"). */
+    fun observeManualSyncState(context: Context): Flow<List<WorkInfo>> =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(MANUAL_WORK_NAME)
 }

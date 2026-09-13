@@ -21,19 +21,20 @@ import com.safeshield.app.device.displayLabel
 import com.safeshield.app.ui.components.StatusCard
 import com.safeshield.app.ui.components.StatusRow
 import com.safeshield.app.ui.theme.SafeShieldTheme
+import com.safeshield.app.updater.BlocklistFreshness
 import com.safeshield.app.vpn.VpnState
 
 /**
- * Home screen. Protection/VPN rows reflect real state ([protectionEnabled]
- * from Room settings, [vpnState] from the running VpnService) as of Phase
- * 5; Device Management reflects real state ([managementState]) as of Phase
- * 6. Blocklist remains a static placeholder until Phase 12/14 wire it up.
+ * Home screen. All four status rows reflect real state: Protection/VPN
+ * since Phase 5, Device Management since Phase 6, Blocklist since Phase 12
+ * (sync) / 14 (this row).
  */
 @Composable
 fun HomeScreen(
     protectionEnabled: Boolean,
     vpnState: VpnState,
     managementState: ManagementState,
+    blocklistFreshness: BlocklistFreshness,
     onEnableProtection: () -> Unit,
     onDisableProtectionRequested: () -> Unit,
     onEnableStrongProtection: () -> Unit,
@@ -81,9 +82,9 @@ fun HomeScreen(
                 )
                 StatusRow(
                     label = "Blocklist",
-                    value = "NOT LOADED",
-                    indicatorColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    filled = false
+                    value = blocklistStatusText(blocklistFreshness),
+                    indicatorColor = blocklistStatusColor(blocklistFreshness),
+                    filled = blocklistFreshness == BlocklistFreshness.UP_TO_DATE
                 )
             }
 
@@ -134,6 +135,19 @@ private fun vpnStatusColor(state: VpnState): Color = when (state) {
     VpnState.CONNECTING, VpnState.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
+private fun blocklistStatusText(freshness: BlocklistFreshness): String = when (freshness) {
+    BlocklistFreshness.NOT_LOADED -> "NOT LOADED"
+    BlocklistFreshness.UP_TO_DATE -> "UP TO DATE"
+    BlocklistFreshness.STALE -> "OUT OF DATE"
+}
+
+@Composable
+private fun blocklistStatusColor(freshness: BlocklistFreshness): Color = when (freshness) {
+    BlocklistFreshness.UP_TO_DATE -> MaterialTheme.colorScheme.primary
+    BlocklistFreshness.STALE -> MaterialTheme.colorScheme.tertiary
+    BlocklistFreshness.NOT_LOADED -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
@@ -142,6 +156,7 @@ private fun HomeScreenPreview() {
             protectionEnabled = false,
             vpnState = VpnState.DISCONNECTED,
             managementState = ManagementState.NOT_MANAGED,
+            blocklistFreshness = BlocklistFreshness.NOT_LOADED,
             onEnableProtection = {},
             onDisableProtectionRequested = {},
             onEnableStrongProtection = {},

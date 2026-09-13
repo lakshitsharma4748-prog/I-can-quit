@@ -30,6 +30,7 @@ import com.safeshield.app.ui.settings.AboutPrivacyScreen
 import com.safeshield.app.ui.settings.BlocklistScreen
 import com.safeshield.app.ui.settings.DeviceManagementScreen
 import com.safeshield.app.ui.settings.SettingsScreen
+import com.safeshield.app.updater.classifyBlocklistFreshness
 import com.safeshield.app.vpn.SafeShieldVpnService
 import kotlinx.coroutines.launch
 
@@ -143,6 +144,7 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
                 protectionEnabled = settings.protectionEnabled,
                 vpnState = vpnState,
                 managementState = managementState,
+                blocklistFreshness = classifyBlocklistFreshness(settings.lastBlocklistUpdate),
                 onEnableProtection = { navController.navigate(Routes.PROTECTION_MODE_SELECT) },
                 onDisableProtectionRequested = {
                     if (protectionViewModel.isPinRequiredToDisable()) {
