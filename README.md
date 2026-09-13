@@ -46,7 +46,8 @@ requirements document.
 | 14 | Full Material 3 UI polish | ✅ Done |
 | 15 | Blocked-website experience | ✅ Done |
 | 16 | Testing | ✅ Done — see [TESTING.md](TESTING.md) |
-| 17–19 | Build verification, release prep, final acceptance | ⏳ Next |
+| 17 | Build verification | ✅ Done — see below |
+| 18–19 | Release prep, final acceptance | ⏳ Next |
 
 See [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md) for what
 Strong Protection's Device Owner step actually requires on a real device,
@@ -111,6 +112,26 @@ it; the backend only feeds the Phase 12 blocklist-sync job.
 > `maven.google.com`, `./gradlew build` is expected to succeed. Please run
 > the build there (or in Android Studio) and report back if anything needs
 > adjustment.
+
+### Verification status (Phase 17)
+
+What was actually run, in this environment, as of the final build-verification pass:
+
+| Check | Result |
+|---|---|
+| `./gradlew build` / `./gradlew testDebugUnitTest` | ❌ Cannot run — `dl.google.com` blocked (see above) |
+| Every Kotlin file, manual brace/paren balance audit | ✅ Clean across all `app/src/**/*.kt` |
+| `AndroidManifest.xml` well-formedness | ✅ Valid XML |
+| Secret scan (API keys, passwords, private keys) across tracked files | ✅ None found |
+| No `.env`, `.jks`, `.keystore`, or `keystore.properties` committed | ✅ Confirmed |
+| `backend`: `npm run typecheck`, `npm run build`, `npm test`, `npm audit` | ✅ All pass, 0 vulnerabilities |
+
+The Android side's logic was verified the way [TESTING.md](TESTING.md)
+describes — pure-Kotlin classes with full JVM unit test coverage, traced
+by hand since even `testDebugUnitTest` needs Gradle to resolve AGP first.
+Nothing here substitutes for actually running `./gradlew build` +
+`connectedAndroidTest` on a real machine, which is the one remaining
+manual step for the Android side.
 
 ## Privacy
 
