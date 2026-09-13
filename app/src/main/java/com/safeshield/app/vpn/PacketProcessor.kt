@@ -1,19 +1,27 @@
 package com.safeshield.app.vpn
 
 import com.safeshield.app.vpn.dns.DnsMessage
-import java.net.Inet4Address
+import java.net.InetAddress
 
 /**
- * Parses raw IPv4/UDP packets read from the TUN interface, decides
+ * Parses raw IP/UDP packets read from the TUN interface, decides
  * BLOCK/ALLOW for DNS queries via [DomainFilter], and builds reply packets.
  * This class performs no I/O itself (no socket, no TUN access) so it is
  * fully unit-testable on the JVM — [SafeShieldVpnService] is the only thing
  * that touches file descriptors or sockets.
  *
- * Scope (Phase 2 MVP): IPv4 + UDP port 53 only. The VPN's routes only ever
- * send DNS traffic (destined for the virtual DNS address) through the TUN,
+ * Scope: UDP port 53 DNS over IPv4 or IPv6 (Phase 9 added IPv6 alongside
+ * Phase 2's original IPv4-only MVP). The VPN's routes only ever send DNS
+ * traffic (destined for one of the virtual DNS addresses) through the TUN,
  * so anything else reaching here is unexpected and is dropped rather than
  * guessed at.
+ *
+ * Explicitly NOT covered, and not achievable without a fundamentally
+ * different (full-tunnel) VPN architecture — see BYPASS_TESTING.md:
+ * DNS-over-TLS/Private DNS (port 853) and DNS-over-HTTPS both go directly
+ * to their configured resolver's real IP over an encrypted connection that
+ * never touches this VPN's narrow DNS-only routes, so they bypass this
+ * filter entirely today.
  */
 class PacketProcessor(private val domainFilter: DomainFilter) {
 
@@ -23,10 +31,10 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
 
         /**
          * Forward [dnsQuery] upstream (the caller decides to where — always
-         * the configured real resolver, never [Ipv4Header.destinationAddress],
-         * which is only ever this VPN's own virtual DNS address). Whatever
-         * comes back from upstream should be passed to [wrapReply] to get
-         * the packet to write back into the TUN.
+         * the configured real resolver, never [ParsedIpHeader.destinationAddress],
+         * which is only ever one of this VPN's own virtual DNS addresses).
+         * Whatever comes back from upstream should be passed to [wrapReply]
+         * to get the packet to write back into the TUN.
          */
         data class Forward(
             val dnsQuery: ByteArray,
@@ -38,7 +46,7 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
     }
 
     fun process(packet: ByteArray, length: Int): Decision {
-        val ip = parseIpv4Header(packet, length) ?: return Decision.Drop
+        val ip = parseIpHeader(packet, length) ?: return Decision.Drop
         if (ip.protocol != PROTOCOL_UDP) return Decision.Drop
 
         val udp = parseUdpHeader(packet, ip.headerLength, length) ?: return Decision.Drop
@@ -58,28 +66,49 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
         }
     }
 
-    // ---- IPv4 -------------------------------------------------------------
+    // ---- IP (v4 or v6) ------------------------------------------------------
 
-    internal data class Ipv4Header(
+    internal data class ParsedIpHeader(
         val headerLength: Int,
         val protocol: Int,
-        val sourceAddress: Inet4Address,
-        val destinationAddress: Inet4Address
+        val isIpv6: Boolean,
+        val sourceAddress: InetAddress,
+        val destinationAddress: InetAddress
     )
 
-    internal fun parseIpv4Header(packet: ByteArray, length: Int): Ipv4Header? {
+    internal fun parseIpHeader(packet: ByteArray, length: Int): ParsedIpHeader? {
+        if (length < 1) return null
+        return when ((packet[0].toInt() and 0xFF) shr 4) {
+            4 -> parseIpv4Header(packet, length)
+            6 -> parseIpv6Header(packet, length)
+            else -> null
+        }
+    }
+
+    private fun parseIpv4Header(packet: ByteArray, length: Int): ParsedIpHeader? {
         if (length < 20) return null
-        val versionAndIhl = packet[0].toInt() and 0xFF
-        val version = versionAndIhl shr 4
-        if (version != 4) return null // IPv6 is out of scope for this MVP (documented limitation)
-        val headerLength = (versionAndIhl and 0x0F) * 4
+        val headerLength = (packet[0].toInt() and 0x0F) * 4
         if (headerLength < 20 || headerLength > length) return null
 
         val protocol = packet[9].toInt() and 0xFF
-        val source = Inet4Address.getByAddress(packet.copyOfRange(12, 16)) as Inet4Address
-        val destination = Inet4Address.getByAddress(packet.copyOfRange(16, 20)) as Inet4Address
+        val source = InetAddress.getByAddress(packet.copyOfRange(12, 16))
+        val destination = InetAddress.getByAddress(packet.copyOfRange(16, 20))
 
-        return Ipv4Header(headerLength, protocol, source, destination)
+        return ParsedIpHeader(headerLength, protocol, isIpv6 = false, source, destination)
+    }
+
+    /**
+     * IPv6's fixed header is always exactly 40 bytes. Extension headers
+     * (routing, fragment, etc.) are uncommon for a plain outgoing UDP DNS
+     * query and are not walked here — a packet using one is dropped rather
+     * than mis-parsed as if "next header" were the final protocol.
+     */
+    private fun parseIpv6Header(packet: ByteArray, length: Int): ParsedIpHeader? {
+        if (length < 40) return null
+        val nextHeader = packet[6].toInt() and 0xFF
+        val source = InetAddress.getByAddress(packet.copyOfRange(8, 24))
+        val destination = InetAddress.getByAddress(packet.copyOfRange(24, 40))
+        return ParsedIpHeader(headerLength = 40, protocol = nextHeader, isIpv6 = true, source, destination)
     }
 
     // ---- UDP ----------------------------------------------------------------
@@ -95,12 +124,11 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
 
     // ---- Reply packet construction -----------------------------------------
 
-    /**
-     * Builds a full IPv4/UDP packet carrying [payload], addressed from the
-     * original destination back to the original source (i.e. a reply),
-     * with correctly computed IPv4 and UDP checksums.
-     */
-    private fun buildReplyPacket(ip: Ipv4Header, udp: UdpHeader, payload: ByteArray): ByteArray {
+    /** Builds a full IP/UDP reply packet carrying [payload], dispatching to the IPv4 or IPv6 builder based on the original packet's version. */
+    private fun buildReplyPacket(ip: ParsedIpHeader, udp: UdpHeader, payload: ByteArray): ByteArray =
+        if (ip.isIpv6) buildIpv6ReplyPacket(ip, udp, payload) else buildIpv4ReplyPacket(ip, udp, payload)
+
+    private fun buildIpv4ReplyPacket(ip: ParsedIpHeader, udp: UdpHeader, payload: ByteArray): ByteArray {
         val udpLength = UDP_HEADER_LENGTH + payload.size
         val totalLength = 20 + udpLength
 
@@ -118,25 +146,69 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
         val ipChecksum = Checksums.compute(ipHeader)
         writeUInt16(ipHeader, 10, ipChecksum)
 
+        val udpHeader = buildUdpHeader(ip, udp, payload, udpLength, pseudoHeaderSize = 12) { pseudo ->
+            System.arraycopy(ip.destinationAddress.address, 0, pseudo, 0, 4)
+            System.arraycopy(ip.sourceAddress.address, 0, pseudo, 4, 4)
+            pseudo[8] = 0
+            pseudo[9] = PROTOCOL_UDP.toByte()
+            writeUInt16(pseudo, 10, udpLength)
+        }
+
+        return ipHeader + udpHeader + payload
+    }
+
+    private fun buildIpv6ReplyPacket(ip: ParsedIpHeader, udp: UdpHeader, payload: ByteArray): ByteArray {
+        val udpLength = UDP_HEADER_LENGTH + payload.size
+
+        val ipHeader = ByteArray(40)
+        ipHeader[0] = 0x60 // version 6; traffic class/flow label left at 0
+        writeUInt16(ipHeader, 4, udpLength) // payload length (excludes this 40-byte header)
+        ipHeader[6] = PROTOCOL_UDP.toByte() // next header
+        ipHeader[7] = 64 // hop limit
+        System.arraycopy(ip.destinationAddress.address, 0, ipHeader, 8, 16) // reply source = original destination
+        System.arraycopy(ip.sourceAddress.address, 0, ipHeader, 24, 16) // reply destination = original source
+        // IPv6 has no header checksum field at all (RFC 8200) — unlike IPv4, there's nothing to compute here.
+
+        // UDP checksum is mandatory over IPv6 (RFC 8200 §8.1), unlike IPv4
+        // where 0 means "no checksum" — buildUdpHeader's zero->0xFFFF
+        // substitution (for the vanishingly unlikely computed-zero case)
+        // keeps the field non-zero either way, so the same helper is safe
+        // to reuse for both.
+        val udpHeader = buildUdpHeader(ip, udp, payload, udpLength, pseudoHeaderSize = 40) { pseudo ->
+            System.arraycopy(ip.destinationAddress.address, 0, pseudo, 0, 16)
+            System.arraycopy(ip.sourceAddress.address, 0, pseudo, 16, 16)
+            writeUInt32(pseudo, 32, udpLength)
+            pseudo[39] = PROTOCOL_UDP.toByte()
+        }
+
+        return ipHeader + udpHeader + payload
+    }
+
+    /** Shared UDP header + checksum construction; [fillPseudoHeader] writes the IP-version-specific pseudo-header fields into an appropriately sized, zeroed buffer. */
+    private fun buildUdpHeader(
+        ip: ParsedIpHeader,
+        udp: UdpHeader,
+        payload: ByteArray,
+        udpLength: Int,
+        pseudoHeaderSize: Int,
+        fillPseudoHeader: (ByteArray) -> Unit
+    ): ByteArray {
         val udpHeader = ByteArray(UDP_HEADER_LENGTH)
         writeUInt16(udpHeader, 0, udp.destinationPort) // reply source port = original destination port (53)
         writeUInt16(udpHeader, 2, udp.sourcePort) // reply destination port = original source port
         writeUInt16(udpHeader, 4, udpLength)
         writeUInt16(udpHeader, 6, 0) // checksum placeholder
 
-        val pseudoHeader = ByteArray(12)
-        System.arraycopy(ip.destinationAddress.address, 0, pseudoHeader, 0, 4)
-        System.arraycopy(ip.sourceAddress.address, 0, pseudoHeader, 4, 4)
-        pseudoHeader[8] = 0
-        pseudoHeader[9] = PROTOCOL_UDP.toByte()
-        writeUInt16(pseudoHeader, 10, udpLength)
-        val udpChecksumRaw = Checksums.compute(pseudoHeader, udpHeader, payload)
+        val pseudoHeader = ByteArray(pseudoHeaderSize)
+        fillPseudoHeader(pseudoHeader)
+        val checksumRaw = Checksums.compute(pseudoHeader, udpHeader, payload)
         // Per RFC 768, a computed checksum of zero is transmitted as all-ones;
-        // an all-zero field would instead mean "no checksum".
-        val udpChecksum = if (udpChecksumRaw == 0) 0xFFFF else udpChecksumRaw
-        writeUInt16(udpHeader, 6, udpChecksum)
+        // an all-zero field would instead mean "no checksum" (IPv4 only —
+        // moot for IPv6, where the field must be non-zero regardless).
+        val checksum = if (checksumRaw == 0) 0xFFFF else checksumRaw
+        writeUInt16(udpHeader, 6, checksum)
 
-        return ipHeader + udpHeader + payload
+        return udpHeader
     }
 
     private fun readUInt16(data: ByteArray, offset: Int): Int =
@@ -145,6 +217,13 @@ class PacketProcessor(private val domainFilter: DomainFilter) {
     private fun writeUInt16(data: ByteArray, offset: Int, value: Int) {
         data[offset] = (value shr 8).toByte()
         data[offset + 1] = value.toByte()
+    }
+
+    private fun writeUInt32(data: ByteArray, offset: Int, value: Int) {
+        data[offset] = (value shr 24).toByte()
+        data[offset + 1] = (value shr 16).toByte()
+        data[offset + 2] = (value shr 8).toByte()
+        data[offset + 3] = value.toByte()
     }
 
     companion object {

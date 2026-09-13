@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -52,6 +54,7 @@ class SafeShieldVpnService : VpnService() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var packetLoopJob: Job? = null
     private var domainSyncJob: Job? = null
+    private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
 
     private lateinit var repository: SafeShieldRepository
 
@@ -94,9 +97,12 @@ class SafeShieldVpnService : VpnService() {
         val establishedInterface = try {
             Builder()
                 .setSession(getString(R.string.app_name))
-                .addAddress(VPN_INTERFACE_ADDRESS, 32)
-                .addDnsServer(VPN_INTERFACE_ADDRESS)
-                .addRoute(VPN_INTERFACE_ADDRESS, 32) // only DNS traffic is captured; everything else bypasses this VPN
+                .addAddress(VPN_INTERFACE_ADDRESS_V4, 32)
+                .addDnsServer(VPN_INTERFACE_ADDRESS_V4)
+                .addRoute(VPN_INTERFACE_ADDRESS_V4, 32) // only DNS traffic is captured; everything else bypasses this VPN
+                .addAddress(VPN_INTERFACE_ADDRESS_V6, 128)
+                .addDnsServer(VPN_INTERFACE_ADDRESS_V6)
+                .addRoute(VPN_INTERFACE_ADDRESS_V6, 128) // same, but for devices/apps resolving DNS over IPv6
                 .establish()
         } catch (e: IllegalStateException) {
             Log.e(TAG, "Failed to establish VPN interface: ${e.javaClass.simpleName}")
@@ -120,9 +126,12 @@ class SafeShieldVpnService : VpnService() {
             launch { repository.activeBlockedDomains.collect { domainFilter.updateBlockedDomains(it) } }
             launch { repository.allowedDomains.collect { domainFilter.updateAllowedDomains(it) } }
         }
+        registerDefaultNetworkCallback()
     }
 
     private fun stopVpn() {
+        unregisterDefaultNetworkCallback()
+
         domainSyncJob?.cancel()
         domainSyncJob = null
 
@@ -178,6 +187,47 @@ class SafeShieldVpnService : VpnService() {
         }
     }
 
+    /**
+     * Tracks the device's active default network (PRD Phase 9: Wi-Fi
+     * change, mobile data, switching networks) and tells the VPN which
+     * network actually carries its traffic via `setUnderlyingNetworks`.
+     * Without this, Android has to guess which network backs the VPN on a
+     * switch, which is exactly the kind of ambiguity that can show a
+     * misleading "no internet" state or route traffic incorrectly right
+     * after a network change.
+     */
+    private fun registerDefaultNetworkCallback() {
+        val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                Log.i(TAG, "Default network changed; re-binding the VPN to it")
+                setUnderlyingNetworks(arrayOf(network))
+            }
+
+            override fun onLost(network: Network) {
+                Log.w(TAG, "Default network lost")
+                setUnderlyingNetworks(null)
+            }
+        }
+        defaultNetworkCallback = callback
+        try {
+            connectivityManager.registerDefaultNetworkCallback(callback)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Could not register network callback: ${e.javaClass.simpleName}")
+        }
+    }
+
+    private fun unregisterDefaultNetworkCallback() {
+        val callback = defaultNetworkCallback ?: return
+        defaultNetworkCallback = null
+        try {
+            getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(callback)
+        } catch (e: IllegalArgumentException) {
+            // Already unregistered (e.g. the callback was never successfully
+            // registered in the first place) — nothing to clean up.
+        }
+    }
+
     private fun writeSafely(output: FileOutputStream, packet: ByteArray) {
         try {
             output.write(packet)
@@ -227,8 +277,9 @@ class SafeShieldVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1
         private const val MAX_PACKET_SIZE = 32_767
 
-        /** RFC 5737 TEST-NET-1 range — never a real routable address, so it can't collide with anything on a real network. */
-        private const val VPN_INTERFACE_ADDRESS = "192.0.2.1"
+        /** RFC 5737 TEST-NET-1 (v4) / RFC 3849 documentation prefix (v6) — never real routable addresses, so neither can collide with anything on a real network. */
+        private const val VPN_INTERFACE_ADDRESS_V4 = "192.0.2.1"
+        private const val VPN_INTERFACE_ADDRESS_V6 = "2001:db8::1"
 
         private const val ACTION_START = "com.safeshield.app.vpn.action.START"
         private const val ACTION_STOP = "com.safeshield.app.vpn.action.STOP"

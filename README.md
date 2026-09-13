@@ -26,28 +26,32 @@ own managed-device provisioning flow) and never uses exploits, hidden
 ## Project status
 
 This project is being built incrementally, phase by phase, per the product
-requirements document. **Phase 0 (repository setup) is complete.** No
-filtering, device-management, PIN, or networking logic exists yet — this is
-project scaffolding only.
+requirements document.
 
 | Phase | Description | Status |
 |---|---|---|
-| 0 | Repository setup (this phase) | ✅ Done |
-| 1 | Basic UI (onboarding, home, settings, admin, about) | ⏳ Next |
-| 2 | VPN MVP (local test blocklist) | Planned |
-| 3 | Room database (domains, allowlist, settings) | Planned |
-| 4 | Administrator PIN | Planned |
-| 5 | Standard Protection | Planned |
-| 6 | Strong Protection consent & Device Owner flow | Planned |
-| 7 | Strong Protection policies | Planned |
-| 8 | Anti-tampering | Planned |
-| 9 | Bypass/network-change testing | Planned |
-| 10–11 | Railway backend + configuration | Planned |
+| 0 | Repository setup | ✅ Done |
+| 1 | Basic UI (onboarding, home, settings, admin, about) | ✅ Done |
+| 2 | VPN MVP (local test blocklist) | ✅ Done |
+| 3 | Room database (domains, allowlist, settings) | ✅ Done |
+| 4 | Administrator PIN | ✅ Done |
+| 5 | Standard Protection | ✅ Done |
+| 6 | Strong Protection consent & Device Owner flow | ✅ Done |
+| 7 | Strong Protection policies | ✅ Done |
+| 8 | Anti-tampering | ✅ Done |
+| 9 | Bypass/network-change testing (IPv6, network resilience) | ✅ Done — see [BYPASS_TESTING.md](BYPASS_TESTING.md) |
+| 10–11 | Railway backend + configuration | ⏳ Next |
 | 12 | Blocklist updates (WorkManager) | Planned |
 | 13 | Privacy documentation | Planned |
 | 14 | Full Material 3 UI polish | Planned |
 | 15 | Blocked-website experience | Planned |
 | 16 | Testing | Planned |
+| 17–19 | Build verification, release prep, final acceptance | Planned |
+
+See [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md) for what
+Strong Protection's Device Owner step actually requires on a real device,
+and [BYPASS_TESTING.md](BYPASS_TESTING.md) for the VPN's known filtering
+gaps (Private DNS/DoH/DoT) and a manual test checklist.
 
 ## Architecture
 
