@@ -45,8 +45,8 @@ requirements document.
 | 13 | Privacy documentation | ✅ Done — see [PRIVACY.md](PRIVACY.md) |
 | 14 | Full Material 3 UI polish | ✅ Done |
 | 15 | Blocked-website experience | ✅ Done |
-| 16 | Testing | ⏳ Next |
-| 17–19 | Build verification, release prep, final acceptance | Planned |
+| 16 | Testing | ✅ Done — see [TESTING.md](TESTING.md) |
+| 17–19 | Build verification, release prep, final acceptance | ⏳ Next |
 
 See [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md) for what
 Strong Protection's Device Owner step actually requires on a real device,
