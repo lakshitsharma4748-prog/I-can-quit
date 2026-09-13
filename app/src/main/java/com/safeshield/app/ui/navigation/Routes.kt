@@ -17,4 +17,5 @@ object Routes {
     const val SETTINGS_ABOUT_PRIVACY = "settings/about-privacy"
     const val SETTINGS_DEVICE_MANAGEMENT = "settings/device-management"
     const val SETTINGS_BLOCKLIST = "settings/blocklist"
+    const val BLOCKED = "blocked"
 }

@@ -2,4 +2,7 @@
     <string name="app_name">SafeShield</string>
     <string name="vpn_notification_channel_name">Protection status</string>
     <string name="vpn_notification_text">Protection is active — filtering DNS requests</string>
+    <string name="blocked_notification_channel_name">Blocked website alerts</string>
+    <string name="blocked_notification_title">Website Blocked</string>
+    <string name="blocked_notification_text">SafeShield blocked a website that matches an adult-content category. Protection is active.</string>
 </resources>

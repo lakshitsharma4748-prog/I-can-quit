@@ -55,6 +55,7 @@ class SafeShieldVpnService : VpnService() {
     private var packetLoopJob: Job? = null
     private var domainSyncJob: Job? = null
     private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastBlockedNotificationAt: Long? = null
 
     private lateinit var repository: SafeShieldRepository
 
@@ -168,7 +169,10 @@ class SafeShieldVpnService : VpnService() {
                 if (length <= 0) continue
 
                 when (val decision = packetProcessor.process(buffer, length)) {
-                    is PacketProcessor.Decision.Block -> writeSafely(output, decision.packet)
+                    is PacketProcessor.Decision.Block -> {
+                        writeSafely(output, decision.packet)
+                        onDomainBlocked()
+                    }
                     is PacketProcessor.Decision.Forward -> {
                         val response = dnsResolver.forward(decision.dnsQuery)
                         if (response != null) {
@@ -228,6 +232,26 @@ class SafeShieldVpnService : VpnService() {
         }
     }
 
+    /**
+     * PRD Phase 15's "blocked website experience," to the extent a
+     * DNS-only VPN can offer one: it can't replace the page the browser
+     * shows (that would need full-tunnel TLS interception — see
+     * BYPASS_TESTING.md), so instead it (a) always signals
+     * [BlockedEventBus] so a foregrounded app can show an in-app blocked
+     * screen, and (b) shows a debounced system notification for when it
+     * isn't foregrounded, which is the common case for a block triggered
+     * from some other app.
+     */
+    private fun onDomainBlocked() {
+        val now = System.currentTimeMillis()
+        BlockedEventBus.notifyBlocked(now)
+
+        if (NotificationDebouncer.shouldNotify(lastBlockedNotificationAt, now)) {
+            lastBlockedNotificationAt = now
+            getSystemService(NotificationManager::class.java)?.notify(BLOCKED_NOTIFICATION_ID, buildBlockedNotification())
+        }
+    }
+
     private fun writeSafely(output: FileOutputStream, packet: ByteArray) {
         try {
             output.write(packet)
@@ -247,12 +271,20 @@ class SafeShieldVpnService : VpnService() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            getString(R.string.vpn_notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW
+        manager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(R.string.vpn_notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            )
         )
-        manager.createNotificationChannel(channel)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                BLOCKED_NOTIFICATION_CHANNEL_ID,
+                getString(R.string.blocked_notification_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+        )
     }
 
     private fun buildNotification(): Notification {
@@ -271,10 +303,29 @@ class SafeShieldVpnService : VpnService() {
             .build()
     }
 
+    /** Never names the blocked domain — only the fixed, category-level explanation the PRD's Phase 15 mockup specifies. */
+    private fun buildBlockedNotification(): Notification {
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        return Notification.Builder(this, BLOCKED_NOTIFICATION_CHANNEL_ID)
+            .setContentTitle(getString(R.string.blocked_notification_title))
+            .setContentText(getString(R.string.blocked_notification_text))
+            .setSmallIcon(R.drawable.ic_notification_shield)
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .build()
+    }
+
     companion object {
         private const val TAG = "SafeShield/VpnService"
         private const val NOTIFICATION_CHANNEL_ID = "safeshield_protection"
         private const val NOTIFICATION_ID = 1
+        private const val BLOCKED_NOTIFICATION_CHANNEL_ID = "safeshield_blocked_alerts"
+        private const val BLOCKED_NOTIFICATION_ID = 2
         private const val MAX_PACKET_SIZE = 32_767
 
         /** RFC 5737 TEST-NET-1 (v4) / RFC 3849 documentation prefix (v6) — never real routable addresses, so neither can collide with anything on a real network. */

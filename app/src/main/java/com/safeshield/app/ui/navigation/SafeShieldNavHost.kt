@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.safeshield.app.device.DeviceManagementViewModel
 import com.safeshield.app.ui.admin.AdminSecurityScreen
+import com.safeshield.app.ui.blocked.BlockedScreen
 import com.safeshield.app.ui.components.PinConfirmDialog
 import com.safeshield.app.ui.home.HomeScreen
 import com.safeshield.app.ui.onboarding.OnboardingExplainScreen
@@ -31,6 +32,7 @@ import com.safeshield.app.ui.settings.BlocklistScreen
 import com.safeshield.app.ui.settings.DeviceManagementScreen
 import com.safeshield.app.ui.settings.SettingsScreen
 import com.safeshield.app.updater.classifyBlocklistFreshness
+import com.safeshield.app.vpn.BlockedEventBus
 import com.safeshield.app.vpn.SafeShieldVpnService
 import kotlinx.coroutines.launch
 
@@ -85,6 +87,15 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
         } else {
             protectionViewModel.activateProtection()
             afterActivation?.invoke()
+        }
+    }
+
+    // Phase 15: only meaningful while SafeShield is actually the
+    // foreground app — a block triggered from elsewhere shows a system
+    // notification instead (SafeShieldVpnService.buildBlockedNotification).
+    LaunchedEffect(Unit) {
+        BlockedEventBus.events.collect {
+            navController.navigate(Routes.BLOCKED) { launchSingleTop = true }
         }
     }
 
@@ -201,6 +212,9 @@ fun SafeShieldNavHost(navController: NavHostController = rememberNavController()
         }
         composable(Routes.SETTINGS_ABOUT_PRIVACY) {
             AboutPrivacyScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.BLOCKED) {
+            BlockedScreen(onDismiss = { navController.popBackStack() })
         }
     }
 }

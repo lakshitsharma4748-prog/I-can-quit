@@ -44,8 +44,8 @@ requirements document.
 | 12 | Blocklist updates (WorkManager) | ✅ Done |
 | 13 | Privacy documentation | ✅ Done — see [PRIVACY.md](PRIVACY.md) |
 | 14 | Full Material 3 UI polish | ✅ Done |
-| 15 | Blocked-website experience | ⏳ Next |
-| 16 | Testing | Planned |
+| 15 | Blocked-website experience | ✅ Done |
+| 16 | Testing | ⏳ Next |
 | 17–19 | Build verification, release prep, final acceptance | Planned |
 
 See [DEVICE_OWNER_PROVISIONING.md](DEVICE_OWNER_PROVISIONING.md) for what
