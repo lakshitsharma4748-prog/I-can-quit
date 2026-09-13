@@ -54,4 +54,44 @@ class DomainFilterTest {
         assertFalse(filter.isBlocked("old.example"))
         assertTrue(filter.isBlocked("new.example"))
     }
+
+    // --- Allowlist (PRD Phase 16: "blocked.example -> BLOCK; allowed.example -> ALLOW") ---
+
+    @Test
+    fun `allowlisted domain overrides a blocklist match`() {
+        val filter = DomainFilter(
+            initialBlockedDomains = setOf("blocked.example"),
+            initialAllowedDomains = setOf("blocked.example")
+        )
+        assertFalse(filter.isBlocked("blocked.example"))
+    }
+
+    @Test
+    fun `allowlist does not affect unrelated blocked domains`() {
+        val filter = DomainFilter(
+            initialBlockedDomains = setOf("blocked.example"),
+            initialAllowedDomains = setOf("allowed.example")
+        )
+        assertTrue(filter.isBlocked("blocked.example"))
+        assertFalse(filter.isBlocked("allowed.example"))
+    }
+
+    @Test
+    fun `allowlisting a parent domain also allows its subdomains`() {
+        val filter = DomainFilter(
+            initialBlockedDomains = setOf("blocked.example"),
+            initialAllowedDomains = setOf("blocked.example")
+        )
+        assertFalse(filter.isBlocked("sub.blocked.example"))
+    }
+
+    @Test
+    fun `updateAllowedDomains replaces the allowlist wholesale`() {
+        val filter = DomainFilter(
+            initialBlockedDomains = setOf("blocked.example"),
+            initialAllowedDomains = setOf("blocked.example")
+        )
+        filter.updateAllowedDomains(emptySet())
+        assertTrue(filter.isBlocked("blocked.example"))
+    }
 }
